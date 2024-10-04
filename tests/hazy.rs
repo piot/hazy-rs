@@ -15,7 +15,7 @@ fn normal_decider() {
         reorder: 6,
     };
 
-    let decider = Decider::new(config);
+    let decider = Decider::new(config).expect("config should be valid");
     assert_eq!(decider.decide(89), Some(&Decision::Unaffected));
     assert_eq!(decider.decide(90), Some(&Decision::Drop));
     assert_eq!(decider.decide(91), Some(&Decision::Duplicate)); // Tamper has zero chance, and should not be in the range

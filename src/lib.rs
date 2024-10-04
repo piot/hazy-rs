@@ -84,18 +84,21 @@ pub struct DeciderConfig {
 }
 
 impl Decider {
-    pub fn new(config: DeciderConfig) -> Self {
-        Self {
-            selector: WeightedSelector::<Decision>::new(
-                [
-                    (config.unaffected, Decision::Unaffected),
-                    (config.drop, Decision::Drop),
-                    (config.tamper, Decision::Tamper),
-                    (config.duplicate, Decision::Duplicate),
-                    (config.reorder, Decision::Reorder),
-                ]
-                .into(),
-            ),
+    pub fn new(config: DeciderConfig) -> Option<Self> {
+        let selector = WeightedSelector::<Decision>::new(
+            [
+                (config.unaffected, Decision::Unaffected),
+                (config.drop, Decision::Drop),
+                (config.tamper, Decision::Tamper),
+                (config.duplicate, Decision::Duplicate),
+                (config.reorder, Decision::Reorder),
+            ]
+            .into(),
+        );
+        if selector.total() == 0 {
+            None
+        } else {
+            Some(Self { selector })
         }
     }
 
@@ -120,13 +123,13 @@ pub struct Direction {
 }
 
 impl Direction {
-    pub fn new(config: DirectionConfig, pseudo_random: StdRng) -> Self {
-        Self {
+    pub fn new(config: DirectionConfig, pseudo_random: StdRng) -> Option<Self> {
+        Some(Self {
             latency_in_ms: 150,
             datagrams: TimeOrderedQueue::<Vec<u8>>::new(),
-            decider: Decider::new(config.decider),
+            decider: Decider::new(config.decider)?,
             pseudo_random,
-        }
+        })
     }
 
     pub fn push(&mut self, absolute_time_now_ms: u64, datagram: &[u8]) {
