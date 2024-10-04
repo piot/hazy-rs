@@ -3,6 +3,7 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 
+use log::trace;
 use rand::{rngs::StdRng, Rng};
 use std::cmp::Ordering;
 use weighted_selector::WeightedSelector;
@@ -131,6 +132,7 @@ impl Direction {
     pub fn push(&mut self, absolute_time_now_ms: u64, datagram: &[u8]) {
         let value = self.pseudo_random.gen_range(0..self.decider.total());
         let decision = self.decider.decide(value).expect("decider should not fail");
+        trace!("push: decision was {:?}", decision);
         let mut absolute_time = self.latency_in_ms + absolute_time_now_ms;
         match decision {
             Decision::Drop => return,

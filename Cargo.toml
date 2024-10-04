@@ -1,6 +1,6 @@
 [package]
 name = "hazy-transport"
-version = "0.0.1"
+version = "0.0.2"
 edition = "2021"
 license = "MIT"
 description = "A simple network simulator"
@@ -12,3 +12,4 @@ repository = "https://github.com/piot/hazy-rs"
 datagram-transport = "^0.0.1"
 rand = "^0.8.4"
 weighted-selector = "^0.0.2"
+log = "^0.4.22"
