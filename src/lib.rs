@@ -3,14 +3,15 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 
-use log::trace;
+use monotonic_time_rs::{Millis, MillisDuration};
 use rand::{rngs::StdRng, Rng};
 use std::cmp::Ordering;
 use weighted_selector::WeightedSelector;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Item<T> {
-    pub absolute_time: u64,
+    pub added_at_absolute_time: Millis,
+    pub absolute_time: Millis,
     pub data: T,
 }
 
@@ -24,7 +25,7 @@ impl<T> TimeOrderedQueue<T> {
         Self { items: Vec::new() }
     }
 
-    pub fn push(&mut self, absolute_time: u64, data: T) {
+    pub fn push(&mut self, now: Millis, absolute_time: Millis, data: T) {
         let index = self
             .items
             .binary_search_by(|item| {
@@ -38,6 +39,7 @@ impl<T> TimeOrderedQueue<T> {
         self.items.insert(
             index,
             Item {
+                added_at_absolute_time: now,
                 absolute_time,
                 data,
             },
@@ -52,7 +54,7 @@ impl<T> TimeOrderedQueue<T> {
         self.items.is_empty()
     }
 
-    pub fn pop_ready(&mut self, absolute_time: u64) -> Option<Item<T>> {
+    pub fn pop_ready(&mut self, absolute_time: Millis) -> Option<Item<T>> {
         let first = self.items.first()?;
         if first.absolute_time > absolute_time {
             None
@@ -113,11 +115,13 @@ impl Decider {
 
 pub struct DirectionConfig {
     pub decider: DeciderConfig,
+    pub min_latency: MillisDuration,
+    pub max_latency: MillisDuration,
 }
 
 pub struct Direction {
     pub decider: Decider,
-    pub latency_in_ms: u64,
+    pub latency_in_ms: MillisDuration,
     pub datagrams: TimeOrderedQueue<Vec<u8>>,
     pub pseudo_random: StdRng,
 }
@@ -125,31 +129,30 @@ pub struct Direction {
 impl Direction {
     pub fn new(config: DirectionConfig, pseudo_random: StdRng) -> Option<Self> {
         Some(Self {
-            latency_in_ms: 150,
+            latency_in_ms: (config.min_latency + config.max_latency) / 2,
             datagrams: TimeOrderedQueue::<Vec<u8>>::new(),
             decider: Decider::new(config.decider)?,
             pseudo_random,
         })
     }
 
-    pub fn push(&mut self, absolute_time_now_ms: u64, datagram: &[u8]) {
+    pub fn push(&mut self, now: Millis, datagram: &[u8]) {
         let value = self.pseudo_random.gen_range(0..self.decider.total());
         let decision = self.decider.decide(value).expect("decider should not fail");
-        trace!("push: decision was {:?}", decision);
-        let mut absolute_time = self.latency_in_ms + absolute_time_now_ms;
+        let mut absolute_time = now + self.latency_in_ms;
         match decision {
             Decision::Drop => return,
             Decision::Tamper => todo!(),
-            Decision::Duplicate => self.datagrams.push(absolute_time, datagram.to_vec()),
+            Decision::Duplicate => self.datagrams.push(now, absolute_time, datagram.to_vec()),
             Decision::Reorder => {
-                absolute_time += self.pseudo_random.gen_range(0..32) as u64;
+                absolute_time += (self.pseudo_random.gen_range(0..32) as u64).into();
             }
             Decision::Unaffected => {}
         }
-        self.datagrams.push(absolute_time, datagram.to_vec());
+        self.datagrams.push(now, absolute_time, datagram.to_vec());
     }
 
-    pub fn pop_ready(&mut self, absolute_time_now_ms: u64) -> Option<Item<Vec<u8>>> {
-        self.datagrams.pop_ready(absolute_time_now_ms)
+    pub fn pop_ready(&mut self, now: Millis) -> Option<Item<Vec<u8>>> {
+        self.datagrams.pop_ready(now)
     }
 }

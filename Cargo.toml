@@ -1,6 +1,6 @@
 [package]
 name = "hazy-transport"
-version = "0.0.3"
+version = "0.0.4"
 edition = "2021"
 license = "MIT"
 description = "A simple network simulator"
@@ -9,7 +9,7 @@ repository = "https://github.com/piot/hazy-rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-datagram-transport = "^0.0.1"
-rand = "^0.8.4"
-weighted-selector = "^0.0.2"
-log = "^0.4.22"
+rand = "0.8.4"
+weighted-selector = "0.0.2"
+log = "0.4.22"
+monotonic-time-rs = "0.0.5"
